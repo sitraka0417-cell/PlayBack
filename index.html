@@ -42,7 +42,15 @@ h2{font-size:1.05rem;margin:18px 4px 10px;color:var(--mut);text-transform:upperc
 .ainfo{flex:1;min-width:0}
 .aname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acount{color:var(--mut);font-size:.82rem;margin-top:2px}
-.chev{transition:transform .2s;color:var(--mut)}
+.chev{color:var(--mut)}
+a.ahead{text-decoration:none;color:inherit}
+.artist:hover{border-color:var(--a)}
+.back{margin:6px 0 14px}
+.banner{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.banner .avatar{flex:0 0 64px;height:64px;font-size:1.6rem;border-radius:18px}
+.banner .aname{font-size:1.3rem;white-space:normal}
+.dlbar{border:1px solid var(--line);border-radius:var(--r) var(--r) 0 0}
+.songs.page{display:block;border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);background:var(--card)}
 .artist.open .chev{transform:rotate(90deg)}
 .btn{border:0;cursor:pointer;color:var(--txt);font:inherit;font-size:.85rem;font-weight:600;border-radius:12px;padding:9px 13px;background:var(--card2);border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 .btn:hover{border-color:var(--a)}
@@ -78,7 +86,7 @@ footer{text-align:center;color:var(--mut);font-size:.8rem;padding:26px 10px}
 </header>
 <main>
   <div class="tools"><input class="search" id="q" type="search" placeholder="Hikaroka artiste na hira…" autocomplete="off"></div>
-  <h2>Liste des Artistes</h2>
+  <h2 id="h2">Liste des Artistes</h2>
   <div id="list"></div>
 </main>
 <footer id="foot">© Sitraka Nambinintsoa</footer>
@@ -112,23 +120,38 @@ async function load(){
   const n=DATA.artists.reduce((t,a)=>t+a.songs.length,0);
   $('stats').textContent=`${DATA.artists.length} artiste • ${n} hira`;
   $('foot').textContent=`© Sitraka Nambinintsoa • Nohavaozina: ${DATA.updated}`;
-  render('');
+  route();
 }
+let view=-1;
+function route(){
+  const h=decodeURIComponent(location.hash.slice(1));
+  view=DATA.artists.findIndex(a=>a.name===h);
+  $('q').value='';render('');window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+const songRow=(s,ai,si,an)=>`<div class="song" data-a="${ai}" data-s="${si}"><button class="ic" data-play>${PLAY}</button>
+  <div class="t">${esc(s.title)}</div>
+  <a class="ic sm" href="${enc(s.file)}" download="${esc(dlName(s,an))}" title="Télécharger">${DL}</a></div>`;
 function render(f){
-  f=f.trim().toLowerCase();const box=$('list');box.innerHTML='';let shown=0;
-  DATA.artists.forEach((a,ai)=>{
-    const matchA=a.name.toLowerCase().includes(f);
-    const songs=a.songs.map((s,si)=>({s,si})).filter(x=>!f||matchA||x.s.title.toLowerCase().includes(f));
-    if(!songs.length)return;shown++;
-    const el=document.createElement('div');el.className='artist'+(f?' open':'');
-    el.innerHTML=`<div class="ahead"><div class="avatar">${esc(a.name[0].toUpperCase())}</div>
+  f=f.trim().toLowerCase();const box=$('list');box.innerHTML='';
+  $('h2').style.display=view>=0?'none':'';
+  if(view>=0){
+    const a=DATA.artists[view];$('q').placeholder='Hikaroka hira ao amin\'i '+a.name+'…';
+    const songs=a.songs.map((s,si)=>({s,si})).filter(x=>!f||x.s.title.toLowerCase().includes(f));
+    box.innerHTML=`<a class="btn back" href="#">← Liste des Artistes</a>
+      <div class="banner"><div class="avatar">${esc(a.name[0].toUpperCase())}</div>
+        <div class="ainfo"><div class="aname">${esc(a.name)}</div><div class="acount">${a.songs.length} hira</div></div></div>
+      <div class="dlbar"><button class="btn pri" data-zip="${view}">${DL} Télécharger tout l'artiste</button><span class="prog"></span></div>
+      <div class="songs page">${songs.length?songs.map(x=>songRow(x.s,view,x.si,a.name)).join(''):'<div class="empty">Tsy nahitana hira.</div>'}</div>`;
+    mark();return;
+  }
+  $('q').placeholder='Hikaroka artiste na hira…';let shown=0;
+  DATA.artists.forEach(a=>{
+    if(f&&!a.name.toLowerCase().includes(f)&&!a.songs.some(s=>s.title.toLowerCase().includes(f)))return;shown++;
+    const el=document.createElement('div');el.className='artist';
+    el.innerHTML=`<a class="ahead" href="#${encodeURIComponent(a.name)}"><div class="avatar">${esc(a.name[0].toUpperCase())}</div>
       <div class="ainfo"><div class="aname">${esc(a.name)}</div><div class="acount">${a.songs.length} hira</div></div>
-      <svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7-1.4-1.4L13.2 12 7.6 6.4z"/></svg></div>
-      <div class="songs"><div class="dlbar"><button class="btn pri" data-zip="${ai}">${DL} Télécharger tout l'artiste</button><span class="prog"></span></div>
-      ${songs.map(x=>`<div class="song" data-a="${ai}" data-s="${x.si}"><button class="ic" data-play>${PLAY}</button>
-        <div class="t">${esc(x.s.title)}</div>
-        <a class="ic sm" href="${enc(x.s.file)}" download="${esc(dlName(x.s,a.name))}" title="Télécharger">${DL}</a></div>`).join('')}</div>`;
-    el.querySelector('.ahead').onclick=()=>el.classList.toggle('open');
+      <svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7-1.4-1.4L13.2 12 7.6 6.4z"/></svg></a>`;
     box.appendChild(el);
   });
   if(!shown)box.innerHTML='<div class="empty">Tsy nahitana na inona na inona.</div>';

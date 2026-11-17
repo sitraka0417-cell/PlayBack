@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sitraka0417-cell.github.io/PlayBack/sitemap.xml
